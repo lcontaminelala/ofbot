@@ -127,7 +127,7 @@ async function getSubscriberCount(channelId) {
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
 async function fetchAndQueueVideos() {
-  const lastWeek = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // 1 mois
+  
   const fetched  = [];
   const seenInFetch = new Set(); // évite les doublons entre requêtes
 
@@ -141,7 +141,6 @@ async function fetchAndQueueVideos() {
           part:              "snippet",
           type:              "video",
           order:             "viewCount",
-          publishedAfter:    lastWeek,
           relevanceLanguage: "fr",
           videoDuration:     "medium",
           maxResults:        15,
@@ -180,19 +179,7 @@ async function fetchAndQueueVideos() {
           console.log(`  ✗ [blacklist titre] ${title}`); continue;
         }
 
-        // 3. Langue FR — rejette si langue définie non-FR
-        if (lang && !lang.startsWith("fr")) {
-          console.log(`  ✗ [langue: ${lang}] ${title}`); continue;
-        }
-        // 3b. Si langue non renseignée, détection anglais par le titre
-        const ENGLISH_KW = [
-          " the ", " is ", " my ", " how ", " best ", " with ", " this ",
-          " new ", " you ", " are ", " was ", " for ", " but ", " and ",
-          "let's play", "let me", "i played", "i tried", "i built",
-        ];
-        if (!lang && ENGLISH_KW.some((kw) => title.toLowerCase().includes(kw))) {
-          console.log(`  ✗ [titre anglais] ${title}`); continue;
-        }
+
 
         // 4. Minimum 2 minutes (élimine les Shorts et les non-parlants courts)
         if (duration < 120) {

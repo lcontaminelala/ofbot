@@ -141,7 +141,6 @@ async function fetchAndQueueVideos() {
           part:              "snippet",
           type:              "video",
           order:             "viewCount",
-          relevanceLanguage: "fr",
           videoDuration:     "medium",
           maxResults:        15,
         },

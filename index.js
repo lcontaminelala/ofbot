@@ -10,11 +10,14 @@ const CHANNEL_ID       = process.env.DISCORD_CHANNEL_ID;
 
 // Mots-clés de recherche YouTube (tous FR + openfront)
 const SEARCH_QUERIES = [
-  "openfront.io français",
-  "openfront io gameplay fr",
-  "openfront io tuto français",
-  "openfront io live fr",
+  "openfront.io",
+  "openfront io gameplay",
+  "openfront io tuto",
+  "openfront io live",
 ];
+
+// Vues minimum pour qu'une vidéo soit postée
+const MIN_VIEWS = 500;
 
 // Nombre max de vidéos postées par jour
 const VIDEOS_PER_DAY = 5;
@@ -89,31 +92,52 @@ async function fetchAndQueueVideos() {
     try {
       const res = await axios.get("https://www.googleapis.com/youtube/v3/search", {
         params: {
-          key:           YOUTUBE_API_KEY,
-          q:             query,
-          part:          "snippet",
-          type:          "video",
-          order:         "date",             // les plus récentes d'abord
-          publishedAfter: yesterday,
-          relevanceLanguage: "fr",           // résultats en français en priorité
-          maxResults:    10,
+          key:              YOUTUBE_API_KEY,
+          q:                query,
+          part:             "snippet",
+          type:             "video",
+          order:            "viewCount",       // les plus vues en premier
+          publishedAfter:   yesterday,
+          relevanceLanguage: "fr",
+          maxResults:       10,
         },
       });
 
-      for (const item of res.data.items) {
-        const id = item.id.videoId;
-        if (!id || postedVideoIds.has(id)) continue;
+      // Récupère les IDs valides non encore postés
+      const ids = res.data.items
+        .map((i) => i.id.videoId)
+        .filter((id) => id && !postedVideoIds.has(id))
+        .join(",");
 
-        // Filtre basique : le titre ou la description doit mentionner openfront
-        const text = (item.snippet.title + " " + item.snippet.description).toLowerCase();
-        if (!text.includes("openfront")) continue;
+      if (!ids) continue;
+
+      // 2e appel pour avoir les stats (vues) et la langue
+      const details = await axios.get("https://www.googleapis.com/youtube/v3/videos", {
+        params: { key: YOUTUBE_API_KEY, id: ids, part: "snippet,statistics" },
+      });
+
+      for (const item of details.data.items) {
+        const id    = item.id;
+        const title = item.snippet.title;
+        const views = parseInt(item.statistics.viewCount || "0", 10);
+        const lang  = item.snippet.defaultAudioLanguage || item.snippet.defaultLanguage || "";
+
+        // Filtre 1 : "openfront" doit être dans le TITRE
+        if (!title.toLowerCase().includes("openfront")) continue;
+        // Filtre 2 : minimum de vues
+        if (views < MIN_VIEWS) continue;
+        // Filtre 3 : langue française ou non définie
+        if (lang && !lang.startsWith("fr")) continue;
+
+        if (postedVideoIds.has(id)) continue;
 
         fetched.push({
           id,
-          title:       item.snippet.title,
+          title,
           channel:     item.snippet.channelTitle,
           thumbnail:   item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
           publishedAt: item.snippet.publishedAt,
+          views,
           url:         `https://www.youtube.com/watch?v=${id}`,
         });
       }
@@ -159,7 +183,7 @@ async function postNextVideo() {
     .setColor(0x1a73e8)
     .setTitle(video.title)
     .setURL(video.url)
-    .setDescription(`📺 **${video.channel}**`)
+    .setDescription(`📺 **${video.channel}**\n👁️ ${video.views.toLocaleString("fr-FR")} vues`)
     .setImage(video.thumbnail)
     .setFooter({ text: "Openfront.io • Vidéo FR" })
     .setTimestamp(new Date(video.publishedAt));
@@ -171,3 +195,4 @@ async function postNextVideo() {
 
 // ─── Lancement ─────────────────────────────────────────────────────────────────
 client.login(DISCORD_TOKEN);
+

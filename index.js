@@ -127,7 +127,7 @@ async function getSubscriberCount(channelId) {
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
 async function fetchAndQueueVideos() {
-  const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const lastWeek = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(); // 1 mois
   const fetched  = [];
   const seenInFetch = new Set(); // évite les doublons entre requêtes
 

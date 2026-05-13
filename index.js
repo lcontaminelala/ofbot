@@ -10,11 +10,11 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID      = process.env.DISCORD_CHANNEL_ID;
 
 const SEARCH_QUERIES = [
-  "openfront.io gameplay fr",
-  "openfront io fr",
-  "openfront io tuto français",
-  "openfront io live français",
-  "openfront jeu français",
+  "openfront.io gameplay",
+  "openfront io",
+  "openfront io tuto",
+  "openfront io live",
+  "openfront io jeu",
 ];
 
 // Mots-clés interdits dans le titre

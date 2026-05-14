@@ -1,7 +1,7 @@
 {
   "name": "openfront-discord-bot",
   "version": "1.0.0",
-  "description": "Bot Discord qui poste des vidéos YouTube Openfront.io automatiquement",
+  "description": "Bot Discord qui poste des vid\u00e9os YouTube Openfront.io automatiquement",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -10,7 +10,8 @@
     "discord.js": "^14.15.3",
     "node-cron": "^3.0.3",
     "axios": "^1.7.2",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "redis": "^4.6.14"
   },
   "engines": {
     "node": ">=18.0.0"

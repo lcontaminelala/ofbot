@@ -34,6 +34,7 @@ const INTERVAL_HOURS  = Math.floor(24 / VIDEOS_PER_DAY);
 
 // Fichier pour persister les IDs déjà postés entre les redémarrages
 const POSTED_IDS_FILE = "./posted_ids.json";
+const QUEUE_FILE      = "./video_queue.json";
 
 // ─── État interne ──────────────────────────────────────────────────────────────
 function loadPostedIds() {
@@ -57,7 +58,22 @@ function savePostedIds(set) {
 const postedVideoIds = loadPostedIds();
 console.log(`📂 ${postedVideoIds.size} vidéos déjà postées chargées.`);
 
-let videoQueue    = [];
+function loadQueue() {
+  try {
+    if (fs.existsSync(QUEUE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(QUEUE_FILE, "utf8"));
+      console.log(`📂 ${data.length} vidéos en file chargées depuis le disque.`);
+      return data;
+    }
+  } catch {}
+  return [];
+}
+
+function saveQueue() {
+  try { fs.writeFileSync(QUEUE_FILE, JSON.stringify(videoQueue)); } catch {}
+}
+
+let videoQueue    = loadQueue();
 let postsToday    = 0;
 let lastResetDate = new Date().toDateString();
 
@@ -66,7 +82,8 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.once("ready", () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
-  fetchAndQueueVideos();
+  if (videoQueue.length === 0) fetchAndQueueVideos();
+  else console.log(`✅ File déjà chargée (${videoQueue.length} vidéos), pas de fetch API.`);
 
   cron.schedule("0 */12 * * *", () => {
     console.log("🔄 Refresh de la file...");
@@ -217,6 +234,7 @@ async function fetchAndQueueVideos() {
     .sort((a, b) => b.views - a.views);
 
   videoQueue.push(...newVideos);
+  saveQueue();
   console.log(`📥 ${newVideos.length} nouvelles vidéos en file (total : ${videoQueue.length})`);
 }
 
@@ -233,6 +251,7 @@ async function postNextVideo() {
   }
 
   const video = videoQueue.shift();
+  saveQueue();
 
   // Sécurité : ne jamais poster deux fois le même ID
   if (postedVideoIds.has(video.id)) {

@@ -1,8 +1,12 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
-const cron  = require("node-cron");
-const axios = require("axios");
-const fs    = require("fs");
+const cron   = require("node-cron");
+const axios  = require("axios");
+const redis  = require("redis");
+
+const redisClient = redis.createClient({ url: process.env.REDIS_URL });
+redisClient.on("error", (err) => console.error("❌ Redis error:", err));
+redisClient.connect().then(() => console.log("✅ Redis connecté."));
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const DISCORD_TOKEN   = process.env.DISCORD_TOKEN;
@@ -32,56 +36,49 @@ const MIN_SUBSCRIBERS = 10_000;
 const VIDEOS_PER_DAY  = 5;
 const INTERVAL_HOURS  = Math.floor(24 / VIDEOS_PER_DAY);
 
-// Fichier pour persister les IDs déjà postés entre les redémarrages
-const POSTED_IDS_FILE = "./posted_ids.json";
-const QUEUE_FILE      = "./video_queue.json";
+// Clés Redis
+const REDIS_POSTED_KEY = "openfront:posted_ids";
+const REDIS_QUEUE_KEY  = "openfront:video_queue";
 
 // ─── État interne ──────────────────────────────────────────────────────────────
-function loadPostedIds() {
+async function loadPostedIds() {
   try {
-    if (fs.existsSync(POSTED_IDS_FILE)) {
-      const data = JSON.parse(fs.readFileSync(POSTED_IDS_FILE, "utf8"));
-      return new Set(data);
-    }
-  } catch {}
-  return new Set();
+    const data = await redisClient.get(REDIS_POSTED_KEY);
+    const ids = data ? JSON.parse(data) : [];
+    console.log(`📂 ${ids.length} vidéos déjà postées chargées depuis Redis.`);
+    return new Set(ids);
+  } catch { return new Set(); }
 }
 
-function savePostedIds(set) {
+async function savePostedIds(set) {
+  try { await redisClient.set(REDIS_POSTED_KEY, JSON.stringify([...set])); } catch {}
+}
+
+async function loadQueue() {
   try {
-    fs.writeFileSync(POSTED_IDS_FILE, JSON.stringify([...set]));
-  } catch (e) {
-    console.error("❌ Impossible de sauvegarder posted_ids :", e.message);
-  }
+    const data = await redisClient.get(REDIS_QUEUE_KEY);
+    const q = data ? JSON.parse(data) : [];
+    console.log(`📂 ${q.length} vidéos en file chargées depuis Redis.`);
+    return q;
+  } catch { return []; }
 }
 
-const postedVideoIds = loadPostedIds();
-console.log(`📂 ${postedVideoIds.size} vidéos déjà postées chargées.`);
-
-function loadQueue() {
-  try {
-    if (fs.existsSync(QUEUE_FILE)) {
-      const data = JSON.parse(fs.readFileSync(QUEUE_FILE, "utf8"));
-      console.log(`📂 ${data.length} vidéos en file chargées depuis le disque.`);
-      return data;
-    }
-  } catch {}
-  return [];
+async function saveQueue() {
+  try { await redisClient.set(REDIS_QUEUE_KEY, JSON.stringify(videoQueue)); } catch {}
 }
 
-function saveQueue() {
-  try { fs.writeFileSync(QUEUE_FILE, JSON.stringify(videoQueue)); } catch {}
-}
-
-let videoQueue    = loadQueue();
+let postedVideoIds = new Set();
+let videoQueue     = [];
 let postsToday    = 0;
 let lastResetDate = new Date().toDateString();
 
 // ─── Client Discord ────────────────────────────────────────────────────────────
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once("ready", () => {
+client.once("ready", async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
+  postedVideoIds = await loadPostedIds();
+  videoQueue     = await loadQueue();
   if (videoQueue.length === 0) fetchAndQueueVideos();
   else console.log(`✅ File déjà chargée (${videoQueue.length} vidéos), pas de fetch API.`);
 

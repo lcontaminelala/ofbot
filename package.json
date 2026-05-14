@@ -1,10 +1,11 @@
 {
   "name": "openfront-discord-bot",
   "version": "1.0.0",
-  "description": "Bot Discord qui poste des vid\u00e9os YouTube Openfront.io automatiquement",
+  "description": "Bot Discord qui poste des vidéos YouTube Openfront.io automatiquement",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "npm install"
   },
   "dependencies": {
     "discord.js": "^14.15.3",

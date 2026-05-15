@@ -21,14 +21,8 @@ const SEARCH_QUERIES = [
   "openfront io jeu",
 ];
 
-// Mots-clés interdits dans le titre
 const TITLE_BLACKLIST = [
-  "no commentary",
-  "no comment",
-  "sans commentaire",
-  "muted",
-  "silent",
-  "music only",
+  "no commentary", "no comment", "sans commentaire", "muted", "silent", "music only",
 ];
 
 const MIN_VIEWS       = 500;
@@ -36,7 +30,6 @@ const MIN_SUBSCRIBERS = 10_000;
 const VIDEOS_PER_DAY  = 5;
 const INTERVAL_HOURS  = Math.floor(24 / VIDEOS_PER_DAY);
 
-// Clés Redis
 const REDIS_POSTED_KEY = "openfront:posted_ids";
 const REDIS_QUEUE_KEY  = "openfront:video_queue";
 
@@ -69,8 +62,8 @@ async function saveQueue() {
 
 let postedVideoIds = new Set();
 let videoQueue     = [];
-let postsToday    = 0;
-let lastResetDate = new Date().toDateString();
+let postsToday     = 0;
+let lastResetDate  = new Date().toDateString();
 
 // ─── Client Discord ────────────────────────────────────────────────────────────
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -100,7 +93,6 @@ client.once("ready", async () => {
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function resetDailyCounterIfNeeded() {
   const today = new Date().toDateString();
   if (today !== lastResetDate) {
@@ -133,30 +125,38 @@ async function getSubscriberCount(channelId) {
       params: { key: YOUTUBE_API_KEY, id: channelId, part: "statistics" },
     });
     return parseInt(res.data.items?.[0]?.statistics?.subscriberCount || "0", 10);
-  } catch {
-    return 0;
-  }
+  } catch { return 0; }
+}
+
+// ─── Détection langue ─────────────────────────────────────────────────────────
+const FOREIGN_WORDS = [
+  " the ", " is ", " my ", " how ", " best ", " with ", " this ", " new ",
+  " you ", " are ", " was ", " for ", " but ", " and ", " from ", " can ",
+  " win ", " got ", " just ", " all ", " its ", " will ", " your ",
+  "let's", "i played", "i tried", "i built", "i fought", "i survived",
+  " ich ", " die ", " der ", " das ", " und ", " mit ", " von ", " auf ",
+  " ein ", " ist ", " hab ", " mein ", " beim ",
+  " con ", " del ", " los ", " las ", " una ", " todo ", " este ", " esta ",
+];
+
+function looksNonFrench(title) {
+  const t = " " + title.toLowerCase() + " ";
+  if (/[\u3000-\u9fff\u0400-\u04ff]/.test(title)) return true;
+  return FOREIGN_WORDS.some((w) => t.includes(w));
 }
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
-
 async function fetchAndQueueVideos() {
-  
-  const fetched  = [];
-  const seenInFetch = new Set(); // évite les doublons entre requêtes
+  const fetched     = [];
+  const seenInFetch = new Set();
 
   for (const query of SEARCH_QUERIES) {
     try {
       console.log(`🔍 Recherche : "${query}"`);
       const res = await axios.get("https://www.googleapis.com/youtube/v3/search", {
         params: {
-          key:               YOUTUBE_API_KEY,
-          q:                 query,
-          part:              "snippet",
-          type:              "video",
-          order:             "viewCount",
-          videoDuration:     "medium",
-          maxResults:        15,
+          key: YOUTUBE_API_KEY, q: query, part: "snippet",
+          type: "video", order: "viewCount", videoDuration: "medium", maxResults: 15,
         },
       });
 
@@ -175,31 +175,20 @@ async function fetchAndQueueVideos() {
         const id          = item.id;
         const title       = item.snippet.title;
         const description = item.snippet.description || "";
-        const views       = parseInt(item.statistics.viewCount  || "0", 10);
-        const lang        = item.snippet.defaultAudioLanguage || item.snippet.defaultLanguage || "";
+        const views       = parseInt(item.statistics.viewCount || "0", 10);
         const duration    = parseDuration(item.contentDetails?.duration);
         const channelId   = item.snippet.channelId;
 
-        // ── Filtres ──────────────────────────────────────────────────────────
-
-        // 1. "openfront" dans le titre ou la description
         if (!(title + " " + description).toLowerCase().includes("openfront")) {
           console.log(`  ✗ [openfront absent] ${title}`); continue;
         }
-
-        // 2. Titre sans mots interdits (no commentary, etc.)
         if (!isTitleOk(title)) {
           console.log(`  ✗ [blacklist titre] ${title}`); continue;
         }
-
-
-
-        // 4. Minimum 2 minutes (élimine les Shorts et les non-parlants courts)
         if (duration < 120) {
           console.log(`  ✗ [trop court: ${duration}s] ${title}`); continue;
         }
 
-        // 5. 500+ vues OU 10 000+ abonnés
         let pass = views >= MIN_VIEWS;
         if (!pass) {
           const subs = await getSubscriberCount(channelId);
@@ -226,17 +215,13 @@ async function fetchAndQueueVideos() {
   }
 
   const existingIds = new Set(videoQueue.map((v) => v.id));
-  const newVideos   = fetched
-    .filter((v) => !existingIds.has(v.id))
-    .sort((a, b) => b.views - a.views);
-
+  const newVideos   = fetched.filter((v) => !existingIds.has(v.id)).sort((a, b) => b.views - a.views);
   videoQueue.push(...newVideos);
   saveQueue();
   console.log(`📥 ${newVideos.length} nouvelles vidéos en file (total : ${videoQueue.length})`);
 }
 
 // ─── Post ─────────────────────────────────────────────────────────────────────
-
 async function postNextVideo() {
   if (!videoQueue.length) {
     console.log("⚠️  File vide — refetch...");
@@ -250,9 +235,15 @@ async function postNextVideo() {
   const video = videoQueue.shift();
   saveQueue();
 
-  // Sécurité : ne jamais poster deux fois le même ID
   if (postedVideoIds.has(video.id)) {
     console.log(`⏭️  Déjà postée, on passe : ${video.title}`);
+    return postNextVideo();
+  }
+
+  if (looksNonFrench(video.title)) {
+    console.log(`⏭️  Titre non-FR détecté, on passe : ${video.title}`);
+    postedVideoIds.add(video.id);
+    savePostedIds(postedVideoIds);
     return postNextVideo();
   }
 
@@ -266,10 +257,7 @@ async function postNextVideo() {
     .setColor(0x1a73e8)
     .setTitle(video.title)
     .setURL(video.url)
-    .setDescription(
-      `📺 **${video.channel}**\n` +
-      `👁️ ${video.views.toLocaleString("fr-FR")} vues  •  ⏱️ ${formatDuration(video.duration)}`
-    )
+    .setDescription(`📺 **${video.channel}**\n👁️ ${video.views.toLocaleString("fr-FR")} vues  •  ⏱️ ${formatDuration(video.duration)}`)
     .setImage(video.thumbnail)
     .setFooter({ text: "Openfront.io • Vidéo FR" })
     .setTimestamp(new Date(video.publishedAt));
@@ -281,4 +269,3 @@ async function postNextVideo() {
 
 // ─── Lancement ────────────────────────────────────────────────────────────────
 client.login(DISCORD_TOKEN);
-

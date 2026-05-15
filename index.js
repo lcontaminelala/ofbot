@@ -15,11 +15,14 @@ const CHANNEL_ID      = process.env.DISCORD_CHANNEL_ID;
 const OWNER_ID        = "1258841903575597117";
 
 const SEARCH_QUERIES = [
-  "openfront.io gameplay",
-  "openfront io",
+  "openfront",
+  "openfront.io",
+  "openfront io gameplay",
   "openfront io tuto",
   "openfront io live",
-  "openfront io jeu",
+  "openfront io fr",
+  "openfront stratégie",
+  "openfront jeu",
 ];
 
 const TITLE_BLACKLIST = [

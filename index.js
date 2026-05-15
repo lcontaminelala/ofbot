@@ -12,6 +12,7 @@ redisClient.connect().then(() => console.log("✅ Redis connecté."));
 const DISCORD_TOKEN   = process.env.DISCORD_TOKEN;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const CHANNEL_ID      = process.env.DISCORD_CHANNEL_ID;
+const OWNER_ID        = "1258841903575597117";
 
 const SEARCH_QUERIES = [
   "openfront.io gameplay",
@@ -66,7 +67,13 @@ let postsToday     = 0;
 let lastResetDate  = new Date().toDateString();
 
 // ─── Client Discord ────────────────────────────────────────────────────────────
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 client.once("ready", async () => {
   console.log(`✅ Bot connecté : ${client.user.tag}`);
@@ -266,6 +273,18 @@ async function postNextVideo() {
   postsToday++;
   console.log(`✅ Postée (${postsToday}/${VIDEOS_PER_DAY}) : ${video.title}`);
 }
+
+// ─── Commande !poste ──────────────────────────────────────────────────────────
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+  if (message.author.id !== OWNER_ID) return;
+  if (message.content.trim() !== "!poste") return;
+
+  await message.reply("📤 Recherche d'une vidéo...");
+  resetDailyCounterIfNeeded();
+  postsToday = Math.max(0, postsToday - 1);
+  await postNextVideo();
+});
 
 // ─── Lancement ────────────────────────────────────────────────────────────────
 client.login(DISCORD_TOKEN);

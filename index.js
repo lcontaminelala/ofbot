@@ -142,7 +142,7 @@ const FOREIGN_WORDS = [
   " win ", " got ", " just ", " all ", " its ", " will ", " your ",
   "let's", "i played", "i tried", "i built", "i fought", "i survived",
   " ich ", " die ", " der ", " das ", " und ", " mit ", " von ", " auf ",
-  " ein ", " ist ", " hab ", " mein ", " beim ",
+  " ein ", " ist ", " hab ", " mein ", " beim ", " trying ", " out ",
   " con ", " del ", " los ", " las ", " una ", " todo ", " este ", " esta ",
 ];
 

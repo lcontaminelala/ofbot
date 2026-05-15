@@ -139,7 +139,7 @@ async function getSubscriberCount(channelId) {
 const FOREIGN_WORDS = [
   " the ", " is ", " my ", " how ", " best ", " with ", " this ", " new ",
   " you ", " are ", " was ", " for ", " but ", " and ", " from ", " can ",
-  " win ", " got ", " just ", " all ", " its ", " will ", " your ",
+  " win ", " got ", " just ", " all ", " its ", " will ", " your ", " everything ",
   "let's", "i played", "i tried", "i built", "i fought", "i survived",
   " ich ", " die ", " der ", " das ", " und ", " mit ", " von ", " auf ",
   " ein ", " ist ", " hab ", " mein ", " beim ", " trying ", " out ",

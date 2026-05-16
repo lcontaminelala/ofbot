@@ -151,7 +151,10 @@ const FOREIGN_WORDS = [
 
 function looksNonFrench(title) {
   const t = " " + title.toLowerCase() + " ";
-  if (/[\u3000-\u9fff\u0400-\u04ff]/.test(title)) return true;
+  // Rejette si plus de 20% des caractères sont non-latins (arabe, japonais, russe, chinois...)
+  const nonLatin = (title.match(/[^\u0000-\u024F\s!?.,:()\-|'"0-9]/g) || []).length;
+  if (nonLatin / title.length > 0.2) return true;
+  // Mots étrangers dans le titre
   return FOREIGN_WORDS.some((w) => t.includes(w));
 }
 

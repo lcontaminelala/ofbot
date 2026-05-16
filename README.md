@@ -1,6 +1,6 @@
 # 🎮 Openfront Discord Bot
 
-Bot Discord qui cherche automatiquement des vidéos YouTube **Openfront.io en français** et les poste dans un salon, **5 fois par jour** (toutes les ~5h).
+Bot Discord qui cherche automatiquement des vidéos YouTube **Openfront.io** et les poste dans un salon, **5 fois par jour** (toutes les ~5h).
 
 ---
 
@@ -18,10 +18,11 @@ Bot Discord qui cherche automatiquement des vidéos YouTube **Openfront.io en fr
 
 1. Va sur https://discord.com/developers/applications → **New Application**
 2. Onglet **Bot** → **Reset Token** → copie le token
-3. Onglet **OAuth2 > URL Generator** :
+3. Active **Message Content Intent** dans **Privileged Gateway Intents**
+4. Onglet **OAuth2 > URL Generator** :
    - Scopes : `bot`
-   - Bot Permissions : `Send Messages`, `Embed Links`, `View Channels`
-4. Ouvre l'URL générée pour inviter le bot sur ton serveur
+   - Bot Permissions : `Send Messages`, `Embed Links`, `View Channels`, `Read Message History`
+5. Ouvre l'URL générée pour inviter le bot sur ton serveur
 
 ### 2. Obtenir une clé YouTube API
 
@@ -42,13 +43,15 @@ Bot Discord qui cherche automatiquement des vidéos YouTube **Openfront.io en fr
 1. Push ce dossier sur un repo GitHub (public ou privé)
 2. Va sur https://railway.app → **New Project** → **Deploy from GitHub repo**
 3. Sélectionne ton repo
-4. Dans **Variables**, ajoute les 3 variables d'environnement :
+4. Ajoute un service **Redis** : **+ New** → **Redis**
+5. Dans les **Variables** de ton service bot, ajoute :
    ```
    DISCORD_TOKEN      = ton_token
    YOUTUBE_API_KEY    = ta_cle
    DISCORD_CHANNEL_ID = id_du_salon
+   REDIS_URL          = ${{Redis.REDIS_URL}}
    ```
-5. Railway lance automatiquement `npm start` — le bot tourne 24/7 !
+6. Railway lance automatiquement `npm start` — le bot tourne 24/7 !
 
 ---
 
@@ -58,10 +61,19 @@ Bot Discord qui cherche automatiquement des vidéos YouTube **Openfront.io en fr
 |-----------|--------|
 | Vidéos par jour | 5 |
 | Intervalle | ~5h |
-| Filtre langue | Français (`relevanceLanguage: fr`) |
-| Filtre récence | Dernières 24h |
-| Anti-doublon | ✅ (mémoire en cours d'exécution) |
-| Critère | Titre/description doit contenir "openfront" |
+| Filtre langue | Détection automatique (latin uniquement) |
+| Filtre popularité | 500+ vues OU 10 000+ abonnés |
+| Filtre durée | Minimum 2 minutes (pas de Shorts) |
+| Anti-doublon | ✅ persistant via Redis |
+| Critère | "openfront" dans le titre ou la description |
+
+---
+
+## 🎮 Commandes
+
+| Commande | Description |
+|----------|-------------|
+| `!poste` | Force le bot à poster une vidéo immédiatement (owner uniquement) |
 
 ---
 
@@ -74,3 +86,4 @@ openfront-bot/
 ├── .env.example      # Variables à remplir
 └── README.md         # Ce fichier
 ```
+
